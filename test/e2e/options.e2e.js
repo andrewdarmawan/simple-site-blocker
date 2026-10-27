@@ -2,7 +2,7 @@
 // site on the options page, and confirm Firefox refuses to load it.
 //
 // Needs Firefox and geckodriver. Point FIREFOX_BIN and GECKODRIVER at them if
-// they aren't on PATH. Run with `npm run test:e2e`.
+// they aren't on PATH. Run with `npm run test:e2e` (about 15 seconds).
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -23,10 +23,13 @@ let build;
 let driver;
 let optionsTab;
 let pageTab;
+const served = new Set();
 
 // Marionette refuses to navigate to moz-extension:// pages, but it can drive
-// one that is already open. So the test build carries one extra background
-// script that opens the options page itself as soon as it's installed.
+// one that is already open. So the test build carries
+// one extra background script that opens the options page itself as soon as
+// it's installed. Extension pages count as privileged, so Firefox also needs
+// -remote-allow-system-access before the driver may touch that tab.
 function testBuild() {
   const dir = mkdtempSync(path.join(tmpdir(), "ssb-e2e-"));
   cpSync(EXTENSION, dir, { recursive: true });
@@ -52,12 +55,21 @@ async function waitForOptionsTab() {
   return driver.getWindowHandle();
 }
 
-// Loads a site in the page tab. True if our local server answered, false if
-// Firefox blocked it.
+// Loads a site in the page tab. True if the page came from our local server,
+// false if Firefox never asked the server for it. A blocked load never
+// finishes, so the driver doesn't wait for page loads and this polls instead.
 async function loads(host) {
   await driver.switchTo().window(pageTab);
+  await driver.get("about:blank");
+  served.delete(host);
   await driver.get(`http://${host}:${port}/`);
-  return (await driver.getTitle()) === `LOADED ${host}`;
+  try {
+    await driver.wait(until.titleIs(`LOADED ${host}`), 3000);
+    return true;
+  } catch {
+    assert.equal(served.has(host), false, `${host} was requested but did not render`);
+    return false;
+  }
 }
 
 async function saveSites(text) {
@@ -76,6 +88,7 @@ async function saveSites(text) {
 before(async () => {
   server = createServer((req, res) => {
     const host = req.headers.host.split(":")[0];
+    served.add(host);
     res.setHeader("Content-Type", "text/html");
     res.end(`<title>LOADED ${host}</title><h1>Loaded ${host}</h1>`);
   });
@@ -83,7 +96,8 @@ before(async () => {
   port = server.address().port;
 
   const options = new firefox.Options()
-    .addArguments("-headless")
+    .setPageLoadStrategy("none")
+    .addArguments("-headless", "-remote-allow-system-access")
     .setPreference("network.proxy.type", 0)
     .setPreference("network.dns.localDomains", HOSTS.join(","));
   if (process.env.FIREFOX_BIN) options.setBinary(process.env.FIREFOX_BIN);
@@ -94,12 +108,14 @@ before(async () => {
     .setFirefoxOptions(options)
     .setFirefoxService(service)
     .build();
-  pageTab = await driver.getWindowHandle();
 
   build = testBuild();
   await driver.installAddon(build, true);
   optionsTab = await waitForOptionsTab();
   await driver.wait(until.elementLocated(By.id("sites")), 5000);
+  // Firefox may have reused the blank start tab for the options page.
+  await driver.switchTo().newWindow("tab");
+  pageTab = await driver.getWindowHandle();
 });
 
 after(async () => {
