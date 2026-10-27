@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Simple Site Blocker",
   "version": "1.0.0",
-  "description": "Blocks the sites you choose, always or on a schedule. It can't read pages or see what you browse.",
-  "permissions": ["declarativeNetRequest", "storage", "alarms"],
+  "description": "Blocks the sites you choose, always or on a schedule. It can't read pages and only sees where you go on blocked sites.",
+  "permissions": ["declarativeNetRequest", "storage", "alarms", "webNavigation"],
   "background": {
     "scripts": ["background.js"],
     "type": "module"

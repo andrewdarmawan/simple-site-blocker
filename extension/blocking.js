@@ -94,6 +94,30 @@ export function allowedPattern(entry) {
   return `^https?://([^/?#]*\\.)?${escapeRegex(host)}(:[0-9]+)?${escapeRegex(path)}([/?#]|$)`;
 }
 
+function onSite(host, site) {
+  return host === site || host.endsWith("." + site);
+}
+
+// Whether the rules would block this address. Used for pages that change
+// without a full load, which the rules never see.
+export function isUrlBlocked(settings, address, now) {
+  if (!isBlocking(settings, now)) return false;
+  let url;
+  try {
+    url = new URL(address);
+  } catch {
+    return false;
+  }
+  if (!/^https?:$/.test(url.protocol)) return false;
+  if (!settings.sites.some((site) => onSite(url.hostname, site))) return false;
+  return !settings.allowed.some((entry) => new RegExp(allowedPattern(entry)).test(url.href));
+}
+
+// A webNavigation event filter that only lets through addresses on these sites.
+export function navigationFilter(sites) {
+  return { url: sites.flatMap((site) => [{ hostEquals: site }, { hostSuffix: "." + site }]) };
+}
+
 const BLOCK_RULE_ID = 1;
 
 // The declarativeNetRequest rules for these settings at this moment. Firefox

@@ -7,6 +7,8 @@ import {
   parseAllowed,
   allowedPattern,
   buildRules,
+  isUrlBlocked,
+  navigationFilter,
   isScheduleActive,
   isBlocking,
   nextChange,
@@ -164,4 +166,26 @@ test("buildRules adds nothing while the schedule is off", () => {
     schedule: workHours,
   });
   assert.deepEqual(buildRules(settings, at("sat", "12:00")), []);
+});
+
+test("isUrlBlocked follows the same rules for in-page navigation", () => {
+  const settings = withDefaults({ sites: ["instagram.com"], allowed: ["instagram.com/direct"] });
+  const now = at("mon", "12:00");
+  assert.equal(isUrlBlocked(settings, "https://www.instagram.com/explore/", now), true);
+  assert.equal(isUrlBlocked(settings, "https://www.instagram.com/direct/inbox/", now), false);
+  assert.equal(isUrlBlocked(settings, "https://www.instagram.com/Direct/", now), true);
+  assert.equal(isUrlBlocked(settings, "https://example.com/explore/", now), false);
+  assert.equal(isUrlBlocked(settings, "not a url", now), false);
+});
+
+test("isUrlBlocked is off while the schedule is off", () => {
+  const settings = withDefaults({ sites: ["instagram.com"], schedule: workHours });
+  assert.equal(isUrlBlocked(settings, "https://www.instagram.com/", at("sat", "12:00")), false);
+  assert.equal(isUrlBlocked(settings, "https://www.instagram.com/", at("mon", "12:00")), true);
+});
+
+test("navigationFilter covers each site and its subdomains", () => {
+  assert.deepEqual(navigationFilter(["instagram.com"]), {
+    url: [{ hostEquals: "instagram.com" }, { hostSuffix: ".instagram.com" }],
+  });
 });
