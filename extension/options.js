@@ -2,12 +2,14 @@ import {
   DEFAULT_SETTINGS,
   withDefaults,
   parseSites,
+  parseAllowed,
   isBlocking,
   nextChange,
 } from "./blocking.js";
 
 const form = document.getElementById("form");
 const sitesField = document.getElementById("sites");
+const allowedField = document.getElementById("allowed");
 const scheduleFields = document.getElementById("schedule");
 const dayBoxes = [...form.elements.day];
 const startField = document.getElementById("start");
@@ -49,6 +51,7 @@ function syncScheduleFields() {
 async function load() {
   saved = withDefaults(await browser.storage.local.get());
   sitesField.value = saved.sites.join("\n");
+  allowedField.value = saved.allowed.join("\n");
   form.elements.when.value = saved.schedule.enabled ? "schedule" : "always";
   for (const box of dayBoxes) box.checked = saved.schedule.days.includes(Number(box.value));
   startField.value = saved.schedule.start;
@@ -64,7 +67,9 @@ form.addEventListener("change", (event) => {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const { sites, invalid } = parseSites(sitesField.value);
+  const { sites, invalid: invalidSites } = parseSites(sitesField.value);
+  const { allowed, invalid: invalidAllowed } = parseAllowed(allowedField.value);
+  const invalid = [...invalidSites, ...invalidAllowed];
   const schedule = {
     enabled: form.elements.when.value === "schedule",
     days: dayBoxes.filter((box) => box.checked).map((box) => Number(box.value)),
@@ -77,9 +82,10 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  saved = { sites, schedule };
+  saved = { sites, allowed, schedule };
   await browser.storage.local.set(saved);
   sitesField.value = sites.join("\n");
+  allowedField.value = allowed.join("\n");
   message.textContent =
     invalid.length > 0
       ? `Saved. Skipped ${invalid.map((entry) => `“${entry}”`).join(", ")}: not a website address.`
