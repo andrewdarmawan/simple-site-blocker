@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Simple Site Blocker</title>
+    <link rel="stylesheet" href="options.css" />
+    <script type="module" src="options.js"></script>
+  </head>
+  <body>
+    <main>
+      <h1>Simple Site Blocker</h1>
+      <p id="status" class="status" role="status"></p>
+
+      <form id="form">
+        <section>
+          <h2><label for="sites">Sites to block</label></h2>
+          <p class="hint">
+            One per line. Subdomains are blocked too, so <code>reddit.com</code> also covers
+            <code>old.reddit.com</code>. This blocks whole sites, not individual pages.
+          </p>
+          <textarea
+            id="sites"
+            rows="8"
+            spellcheck="false"
+            autocapitalize="off"
+            placeholder="reddit.com&#10;youtube.com"
+          ></textarea>
+        </section>
+
+        <section>
+          <h2>When to block</h2>
+          <div class="choices">
+            <label><input type="radio" name="when" value="always" /> Always</label>
+            <label><input type="radio" name="when" value="schedule" /> On a schedule</label>
+          </div>
+
+          <fieldset id="schedule" class="schedule">
+            <legend class="visually-hidden">Schedule</legend>
+            <div class="days" role="group" aria-label="Days">
+              <label><input type="checkbox" name="day" value="1" /> Mon</label>
+              <label><input type="checkbox" name="day" value="2" /> Tue</label>
+              <label><input type="checkbox" name="day" value="3" /> Wed</label>
+              <label><input type="checkbox" name="day" value="4" /> Thu</label>
+              <label><input type="checkbox" name="day" value="5" /> Fri</label>
+              <label><input type="checkbox" name="day" value="6" /> Sat</label>
+              <label><input type="checkbox" name="day" value="0" /> Sun</label>
+            </div>
+            <div class="times">
+              <label>From <input type="time" id="start" required /></label>
+              <label>to <input type="time" id="end" required /></label>
+            </div>
+            <p class="hint">
+              If the end time is earlier than the start time, the block runs overnight. Using the
+              same start and end time blocks the whole day.
+            </p>
+          </fieldset>
+        </section>
+
+        <div class="actions">
+          <button type="submit">Save</button>
+          <span id="message" role="status"></span>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>
