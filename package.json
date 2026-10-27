@@ -3,8 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test",
+    "test": "node --test test/*.test.js",
+    "test:e2e": "node --test test/e2e/*.e2e.js",
     "lint": "npx --yes web-ext@10.8.0 lint --source-dir extension",
     "build": "npx --yes web-ext@10.8.0 build --source-dir extension --overwrite-dest"
+  },
+  "devDependencies": {
+    "selenium-webdriver": "^4.51.0"
   }
 }
