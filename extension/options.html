@@ -17,7 +17,7 @@
           <h2><label for="sites">Sites to block</label></h2>
           <p class="hint">
             One per line. Subdomains are blocked too, so <code>reddit.com</code> also covers
-            <code>old.reddit.com</code>. This blocks whole sites, not individual pages.
+            <code>old.reddit.com</code>.
           </p>
           <textarea
             id="sites"
@@ -25,6 +25,24 @@
             spellcheck="false"
             autocapitalize="off"
             placeholder="reddit.com&#10;youtube.com"
+          ></textarea>
+        </section>
+
+        <section>
+          <h2><label for="allowed">Always allow</label></h2>
+          <p class="hint">
+            Pages to let through even when their site is blocked. A path covers everything under
+            it, so <code>instagram.com/direct</code> also allows
+            <code>instagram.com/direct/inbox</code>. Some sites change pages without reloading,
+            so moving from an allowed page to a blocked one inside the site may not be stopped
+            until you reload.
+          </p>
+          <textarea
+            id="allowed"
+            rows="4"
+            spellcheck="false"
+            autocapitalize="off"
+            placeholder="instagram.com/direct"
           ></textarea>
         </section>
 

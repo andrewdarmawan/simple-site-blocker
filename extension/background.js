@@ -1,24 +1,18 @@
-import { withDefaults, isBlocking, nextChange } from "./blocking.js";
+import { withDefaults, buildRules, nextChange } from "./blocking.js";
 
-const RULE_ID = 1;
 const ALARM = "schedule-change";
 
-// Firefox matches requests against this rule itself. The extension is never
+// Firefox matches requests against these rules itself. The extension is never
 // told which pages you visit or which requests were blocked.
 async function update() {
   const settings = withDefaults(await browser.storage.local.get());
   const now = new Date();
 
-  const addRules = isBlocking(settings, now)
-    ? [
-        {
-          id: RULE_ID,
-          action: { type: "block" },
-          condition: { requestDomains: settings.sites, resourceTypes: ["main_frame"] },
-        },
-      ]
-    : [];
-  await browser.declarativeNetRequest.updateDynamicRules({ removeRuleIds: [RULE_ID], addRules });
+  const existing = await browser.declarativeNetRequest.getDynamicRules();
+  await browser.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: existing.map((rule) => rule.id),
+    addRules: buildRules(settings, now),
+  });
 
   await browser.alarms.clear(ALARM);
   const next = settings.sites.length > 0 ? nextChange(settings.schedule, now) : null;

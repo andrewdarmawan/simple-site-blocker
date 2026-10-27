@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import {
   normalizeSite,
   parseSites,
+  normalizeAllowed,
+  parseAllowed,
+  allowedPattern,
+  buildRules,
   isScheduleActive,
   isBlocking,
   nextChange,
@@ -91,4 +95,73 @@ test("nextChange is null when the state never changes", () => {
   assert.equal(nextChange({ ...workHours, days: [] }, at("mon", "12:00")), null);
   const everyDayAllDay = { ...allDayMonday, days: [0, 1, 2, 3, 4, 5, 6] };
   assert.equal(nextChange(everyDayAllDay, at("wed", "12:00")), null);
+});
+
+test("normalizeAllowed keeps the path but drops www, trailing slashes and queries", () => {
+  assert.equal(normalizeAllowed("www.instagram.com/direct"), "instagram.com/direct");
+  assert.equal(
+    normalizeAllowed("https://www.Instagram.com/direct/inbox/?x=1#top"),
+    "instagram.com/direct/inbox",
+  );
+  assert.equal(normalizeAllowed("music.youtube.com"), "music.youtube.com");
+  assert.equal(normalizeAllowed("https://music.youtube.com/"), "music.youtube.com");
+  assert.equal(normalizeAllowed("not a site/direct"), null);
+  assert.equal(normalizeAllowed("Example.com/Work"), "example.com/Work");
+});
+
+test("parseAllowed removes duplicates and reports bad entries", () => {
+  const { allowed, invalid } = parseAllowed(
+    "instagram.com/direct\nwww.instagram.com/direct/\nnope",
+  );
+  assert.deepEqual(allowed, ["instagram.com/direct"]);
+  assert.deepEqual(invalid, ["nope"]);
+});
+
+function allows(entry, url) {
+  return new RegExp(allowedPattern(entry)).test(url);
+}
+
+test("an allowed path covers that page and everything under it", () => {
+  const entry = "instagram.com/direct";
+  assert.equal(allows(entry, "https://www.instagram.com/direct"), true);
+  assert.equal(allows(entry, "https://www.instagram.com/direct/"), true);
+  assert.equal(allows(entry, "https://www.instagram.com/direct/inbox/"), true);
+  assert.equal(allows(entry, "https://instagram.com/direct?next=1"), true);
+  assert.equal(allows(entry, "https://www.instagram.com:443/direct"), true);
+});
+
+test("an allowed path doesn't leak to other pages or sites", () => {
+  const entry = "instagram.com/direct";
+  assert.equal(allows(entry, "https://www.instagram.com/"), false);
+  assert.equal(allows(entry, "https://www.instagram.com/directory"), false);
+  assert.equal(allows(entry, "https://www.instagram.com/explore/direct"), false);
+  assert.equal(allows(entry, "https://notinstagram.com/direct"), false);
+  assert.equal(allows(entry, "https://instagram.com.example.org/direct"), false);
+  assert.equal(allows("example.com/Work", "https://example.com/work"), false);
+});
+
+test("an allowed domain without a path covers the whole domain", () => {
+  assert.equal(allows("music.youtube.com", "https://music.youtube.com/watch?v=1"), true);
+  assert.equal(allows("music.youtube.com", "https://www.youtube.com/watch?v=1"), false);
+});
+
+test("buildRules lets exceptions outrank the block", () => {
+  const settings = withDefaults({ sites: ["instagram.com"], allowed: ["instagram.com/direct"] });
+  const [block, allow] = buildRules(settings, at("mon", "12:00"));
+  assert.equal(block.action.type, "block");
+  assert.deepEqual(block.condition.requestDomains, ["instagram.com"]);
+  assert.equal(allow.action.type, "allow");
+  assert.equal(allow.condition.regexFilter, allowedPattern("instagram.com/direct"));
+  assert.equal(allow.condition.isUrlFilterCaseSensitive, true);
+  assert.ok(allow.priority > block.priority);
+  assert.notEqual(allow.id, block.id);
+});
+
+test("buildRules adds nothing while the schedule is off", () => {
+  const settings = withDefaults({
+    sites: ["instagram.com"],
+    allowed: ["instagram.com/direct"],
+    schedule: workHours,
+  });
+  assert.deepEqual(buildRules(settings, at("sat", "12:00")), []);
 });
