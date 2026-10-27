@@ -21,9 +21,10 @@ export function withDefaults(stored = {}) {
 }
 
 function parseUrl(input) {
-  let text = input.trim().toLowerCase();
+  // URL lowercases the host but keeps the path's case, which can matter.
+  let text = input.trim();
   if (!text) return null;
-  if (!/^[a-z][a-z0-9+.-]*:\/\//.test(text)) text = "http://" + text;
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) text = "http://" + text;
 
   let url;
   try {
@@ -111,7 +112,11 @@ export function buildRules(settings, now) {
       id: BLOCK_RULE_ID + 1 + index,
       priority: 2,
       action: { type: "allow" },
-      condition: { regexFilter: allowedPattern(entry), resourceTypes },
+      condition: {
+        regexFilter: allowedPattern(entry),
+        isUrlFilterCaseSensitive: true,
+        resourceTypes,
+      },
     })),
   ];
 }

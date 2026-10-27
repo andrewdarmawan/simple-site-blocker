@@ -106,6 +106,7 @@ test("normalizeAllowed keeps the path but drops www, trailing slashes and querie
   assert.equal(normalizeAllowed("music.youtube.com"), "music.youtube.com");
   assert.equal(normalizeAllowed("https://music.youtube.com/"), "music.youtube.com");
   assert.equal(normalizeAllowed("not a site/direct"), null);
+  assert.equal(normalizeAllowed("Example.com/Work"), "example.com/Work");
 });
 
 test("parseAllowed removes duplicates and reports bad entries", () => {
@@ -136,6 +137,7 @@ test("an allowed path doesn't leak to other pages or sites", () => {
   assert.equal(allows(entry, "https://www.instagram.com/explore/direct"), false);
   assert.equal(allows(entry, "https://notinstagram.com/direct"), false);
   assert.equal(allows(entry, "https://instagram.com.example.org/direct"), false);
+  assert.equal(allows("example.com/Work", "https://example.com/work"), false);
 });
 
 test("an allowed domain without a path covers the whole domain", () => {
@@ -150,6 +152,7 @@ test("buildRules lets exceptions outrank the block", () => {
   assert.deepEqual(block.condition.requestDomains, ["instagram.com"]);
   assert.equal(allow.action.type, "allow");
   assert.equal(allow.condition.regexFilter, allowedPattern("instagram.com/direct"));
+  assert.equal(allow.condition.isUrlFilterCaseSensitive, true);
   assert.ok(allow.priority > block.priority);
   assert.notEqual(allow.id, block.id);
 });
